@@ -5,13 +5,16 @@ import java.util.List;
 
 import org.springframework.stereotype.Service;
 
+import com.example.demo.dto.AttendanceItemDTO;
 import com.example.demo.dto.AttendanceRequestDTO;
 import com.example.demo.dto.BulkAttendanceDTO;
 import com.example.demo.entity.Attendance;
+import com.example.demo.entity.Status;
 import com.example.demo.entity.Student;
 import com.example.demo.repository.AttendanceRepository;
 import com.example.demo.repository.StudentRepository;
 
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -24,11 +27,9 @@ public class AttendanceServiceImpl implements AttendanceService {
     @Override
     public Attendance markAttendance(AttendanceRequestDTO request) {
 
-        // Fetch student from database
         Student student = studentRepository.findById(request.getStudentId())
                 .orElseThrow(() -> new RuntimeException("Student not found"));
 
-        // Create attendance object
         Attendance attendance = Attendance.builder()
                 .student(student)
                 .attendanceDate(request.getAttendanceDate())
@@ -54,24 +55,19 @@ public class AttendanceServiceImpl implements AttendanceService {
     }
 
     @Override
-    public void markBulkAttendance(
-            BulkAttendanceDTO dto) {
+    @Transactional
+    public void markBulkAttendance(BulkAttendanceDTO dto) {
 
-        for(Long studentId : dto.getStudentIds()) {
+        for (AttendanceItemDTO item : dto.getAttendanceList()) {
 
-            Student student =
-                studentRepository.findById(studentId)
-                .orElseThrow(
-                  () -> new RuntimeException(
-                    "Student Not Found"));
+            Student student = studentRepository.findById(item.getStudentId())
+                    .orElseThrow(() -> new RuntimeException("Student not found"));
 
-            Attendance attendance =
-                Attendance.builder()
-                    .student(student)
-                    .attendanceDate(
-                       dto.getAttendanceDate())
-                    .status(dto.getStatus())
-                    .build();
+            Attendance attendance = new Attendance();
+
+            attendance.setStudent(student);
+            attendance.setAttendanceDate(dto.getAttendanceDate());
+            attendance.setStatus(Status.valueOf(item.getStatus()));
 
             attendanceRepository.save(attendance);
         }
